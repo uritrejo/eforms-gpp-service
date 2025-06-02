@@ -1,0 +1,21 @@
+# Maven and Java
+/target/
+!.mvn/wrapper/maven-wrapper.jar
+*.log
+*.class
+*.jar
+*.war
+*.ear
+
+# IDEs and editors
+/.idea/
+/.vscode/
+/*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Others
+*.swp
+*.swo
