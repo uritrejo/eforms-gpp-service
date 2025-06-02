@@ -20,33 +20,69 @@ public class GppController {
 
     private final GppNoticeAnalyzer analyzer = new DefaultGppNoticeAnalyzer();
 
+    // temporary storage for manual testing
     private Notice dummyNotice;
 
     @PostMapping(value = "/analyze-notice", consumes = MediaType.APPLICATION_XML_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<GppAnalysisResult> analyzeNotice(@RequestBody String xmlString) {
-        log.info("Received analyze request");
-        Notice notice = analyzer.loadNotice(xmlString);
+    public ResponseEntity<GppAnalysisResult> analyzeNotice(
+            @RequestBody String xmlString,
+            @RequestParam(name = "manualTesting", required = false, defaultValue = "false") boolean manualTesting) {
 
-        // ??++ tmp
-        dummyNotice = notice;
+        log.info("Received analyze request");
+
+        Notice notice = analyzer.loadNotice(xmlString);
+        if (manualTesting) {
+            log.info("Manual testing mode enabled for /analyze-notice");
+            dummyNotice = notice;
+        }
 
         GppAnalysisResult result = analyzer.analyzeNotice(notice);
         return ResponseEntity.ok(result);
     }
 
     @PostMapping(value = "/suggest-patches", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<SuggestedPatchesResponse> suggestPatches(@RequestBody SuggestedPatchesRequest request) {
-        log.info("Received suggest-patches request");
-        // Notice notice = analyzer.loadNotice(request.getNoticeXml());
+    public ResponseEntity<SuggestPatchesResponse> suggestPatches(
+            @RequestBody SuggestPatchesRequest request,
+            @RequestParam(name = "manualTesting", required = false, defaultValue = "false") boolean manualTesting) {
 
-        // ??++ tmp
-        Notice notice = dummyNotice;
+        log.info("Received suggest-patches request");
+
+        Notice notice;
+        if (manualTesting) {
+            log.info("Manual testing mode enabled for /suggest-patches");
+            notice = dummyNotice;
+        } else {
+            notice = analyzer.loadNotice(request.getNoticeXml());
+        }
 
         List<SuggestedGppPatch> patches = analyzer.suggestPatches(notice, request.getCriteria());
-        return ResponseEntity.ok(new SuggestedPatchesResponse(patches));
+        return ResponseEntity.ok(new SuggestPatchesResponse(patches));
     }
 
-    public static class SuggestedPatchesRequest {
+    @PostMapping(value = "/apply-patches", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApplyPatchesResponse> applyPatches(
+            @RequestBody ApplyPatchesRequest request,
+            @RequestParam(name = "manualTesting", required = false, defaultValue = "false") boolean manualTesting) {
+
+        log.info("Received apply-patches request");
+
+        Notice notice;
+        if (manualTesting) {
+            log.info("Manual testing mode enabled for /apply-patches");
+            notice = dummyNotice;
+        } else {
+            notice = analyzer.loadNotice(request.getNoticeXml());
+        }
+
+        Notice patchedNotice = analyzer.applyPatches(notice, request.getPatches());
+        String patchedNoticeXml = patchedNotice.toXmlString();
+
+        log.info("Patched notice XML");
+
+        return ResponseEntity.ok(new ApplyPatchesResponse(patchedNoticeXml));
+    }
+
+    public static class SuggestPatchesRequest {
         private String noticeXml;
         private List<SuggestedGppCriterion> criteria;
 
@@ -67,10 +103,10 @@ public class GppController {
         }
     }
 
-    public static class SuggestedPatchesResponse {
+    public static class SuggestPatchesResponse {
         private List<SuggestedGppPatch> suggestedPatches;
 
-        public SuggestedPatchesResponse(List<SuggestedGppPatch> patches) {
+        public SuggestPatchesResponse(List<SuggestedGppPatch> patches) {
             this.suggestedPatches = patches;
         }
 
@@ -80,6 +116,43 @@ public class GppController {
 
         public void setSuggestedPatches(List<SuggestedGppPatch> patches) {
             this.suggestedPatches = patches;
+        }
+    }
+
+    public static class ApplyPatchesRequest {
+        private String noticeXml;
+        private List<SuggestedGppPatch> patches;
+
+        public String getNoticeXml() {
+            return noticeXml;
+        }
+
+        public void setNoticeXml(String noticeXml) {
+            this.noticeXml = noticeXml;
+        }
+
+        public List<SuggestedGppPatch> getPatches() {
+            return patches;
+        }
+
+        public void setPatches(List<SuggestedGppPatch> patches) {
+            this.patches = patches;
+        }
+    }
+
+    public static class ApplyPatchesResponse {
+        private String patchedNoticeXml;
+
+        public ApplyPatchesResponse(String patchedNoticeXml) {
+            this.patchedNoticeXml = patchedNoticeXml;
+        }
+
+        public String getPatchedNoticeXml() {
+            return patchedNoticeXml;
+        }
+
+        public void setPatchedNoticeXml(String patchedNoticeXml) {
+            this.patchedNoticeXml = patchedNoticeXml;
         }
     }
 }
