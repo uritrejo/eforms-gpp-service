@@ -1,5 +1,6 @@
 package it.polimi.gpplib.eforms_gpp_service.controller;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
@@ -10,8 +11,16 @@ import it.polimi.gpplib.model.Notice;
 import it.polimi.gpplib.model.GppAnalysisResult;
 import it.polimi.gpplib.model.SuggestedGppCriterion;
 import it.polimi.gpplib.model.SuggestedGppPatch;
+import it.polimi.gpplib.eforms_gpp_service.config.AppConfig;
 
 import java.util.List;
+
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import java.util.Base64;
+import java.util.Collections;
 
 @Slf4j
 @RestController
@@ -19,6 +28,9 @@ import java.util.List;
 public class GppController {
 
     private final GppNoticeAnalyzer analyzer = new DefaultGppNoticeAnalyzer();
+
+    @Autowired
+    private AppConfig appConfig;
 
     // temporary storage for manual testing
     private Notice dummyNotice;
@@ -80,6 +92,44 @@ public class GppController {
         log.info("Patched notice XML");
 
         return ResponseEntity.ok(new ApplyPatchesResponse(patchedNoticeXml));
+    }
+
+    @PostMapping(value = "/visualize-notice", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> visualizeNotice(
+            @RequestBody VisualizeNoticeRequest request,
+            @RequestParam(name = "language", required = false, defaultValue = "en") String language) {
+
+        log.info("Received visualize-notice request");
+
+        // Encode XML to Base64
+        String base64Xml = Base64.getEncoder().encodeToString(request.getNoticeXml().getBytes());
+
+        // Prepare request body for TED API
+        String tedRequestBody = String.format(
+                "{\"file\":\"%s\",\"language\":\"%s\",\"format\":\"HTML\",\"summary\":false}",
+                base64Xml, language);
+
+        // Set headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(Collections.singletonList(MediaType.TEXT_HTML));
+        headers.setBearerAuth(appConfig.getApi().getTedApiKey());
+
+        HttpEntity<String> requestEntity = new HttpEntity<>(tedRequestBody, headers);
+
+        // Call TED API
+        RestTemplate restTemplate = new RestTemplate();
+        String tedApiUrl = "https://api.ted.europa.eu/v3/notices/render";
+        ResponseEntity<String> tedResponse = restTemplate.exchange(
+                tedApiUrl,
+                HttpMethod.POST,
+                requestEntity,
+                String.class);
+
+        // Forward HTML response
+        return ResponseEntity.status(tedResponse.getStatusCode())
+                .contentType(MediaType.TEXT_HTML)
+                .body(tedResponse.getBody());
     }
 
     public static class SuggestPatchesRequest {
@@ -153,6 +203,18 @@ public class GppController {
 
         public void setPatchedNoticeXml(String patchedNoticeXml) {
             this.patchedNoticeXml = patchedNoticeXml;
+        }
+    }
+
+    public static class VisualizeNoticeRequest {
+        private String noticeXml;
+
+        public String getNoticeXml() {
+            return noticeXml;
+        }
+
+        public void setNoticeXml(String noticeXml) {
+            this.noticeXml = noticeXml;
         }
     }
 }

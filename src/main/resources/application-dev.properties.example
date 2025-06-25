@@ -1,0 +1,13 @@
+# Example application-dev.properties for development environment
+# Copy this file and rename to application-dev.properties for development-specific settings
+
+spring.application.name=eforms-gpp-service
+server.port=4420
+
+# Development CORS Configuration - more permissive
+app.cors.allowed-origins=http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000
+app.cors.allowed-methods=GET,POST,PUT,DELETE,OPTIONS
+app.cors.allowed-headers=*
+
+# Development API Configuration
+app.api.ted-api-key=your-development-api-key-here
