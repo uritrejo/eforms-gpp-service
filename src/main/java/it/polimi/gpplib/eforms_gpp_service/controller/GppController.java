@@ -132,6 +132,103 @@ public class GppController {
                 .body(tedResponse.getBody());
     }
 
+    @PostMapping(value = "/validate-notice", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ValidateNoticeResponse> validateNotice(
+            @RequestBody ValidateNoticeRequest request) {
+
+        log.info("Received validate-notice request");
+
+        // Load notice to get the eForms SDK version
+        Notice notice = analyzer.loadNotice(request.getNoticeXml());
+        String eFormsSdkVersion = notice.getEFormsSdkVersion();
+
+        // Encode XML to Base64
+        String base64Xml = Base64.getEncoder().encodeToString(request.getNoticeXml().getBytes());
+
+        // Prepare request body for TED API
+        String tedRequestBody = String.format(
+                "{\"notice\":\"%s\",\"language\":\"%s\",\"validationMode\":\"%s\",\"eFormsSdkVersion\":\"%s\"}",
+                base64Xml, request.getLanguage(), request.getValidationMode(), eFormsSdkVersion);
+
+        // Set headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_XML));
+        headers.setBearerAuth(appConfig.getApi().getTedApiKey());
+
+        HttpEntity<String> requestEntity = new HttpEntity<>(tedRequestBody, headers);
+
+        // Call TED API
+        RestTemplate restTemplate = new RestTemplate();
+        String tedApiUrl = "https://api.ted.europa.eu/v3/notices/validate";
+
+        ValidateNoticeResponse response = new ValidateNoticeResponse();
+
+        try {
+            ResponseEntity<String> tedResponse = restTemplate.exchange(
+                    tedApiUrl,
+                    HttpMethod.POST,
+                    requestEntity,
+                    String.class);
+
+            // Success case - TED API returned validation report as XML
+            response.setValidationReportXml(tedResponse.getBody());
+            response.setSummary("Validation completed successfully");
+            response.setValidationStatus(tedResponse.getStatusCode().value());
+
+            return ResponseEntity.ok(response);
+
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            // Handle HTTP client errors (4xx status codes)
+            TedApiErrorResponse errorResponse = parseErrorResponse(e.getResponseBodyAsString());
+
+            response.setValidationReportXml(null);
+            response.setSummary("Fatal error: " + errorResponse.getMessage());
+            response.setValidationStatus(e.getStatusCode().value());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            // Handle other exceptions (network issues, etc.)
+            response.setValidationReportXml(null);
+            response.setSummary("Fatal error: " + e.getMessage());
+            response.setValidationStatus(500);
+
+            return ResponseEntity.ok(response);
+        }
+    }
+
+    private TedApiErrorResponse parseErrorResponse(String responseBody) {
+        try {
+            // Simple JSON parsing - you could use Jackson ObjectMapper for more robust
+            // parsing
+            if (responseBody.contains("\"message\":")) {
+                int messageStart = responseBody.indexOf("\"message\":\"") + 11;
+                int messageEnd = responseBody.indexOf("\"", messageStart);
+                String message = responseBody.substring(messageStart, messageEnd)
+                        .replace("\\n", " ")
+                        .replace("\\\"", "\"");
+                return new TedApiErrorResponse(message);
+            }
+        } catch (Exception e) {
+            log.warn("Could not parse error response from TED API", e);
+        }
+        return new TedApiErrorResponse("Unknown error occurred");
+    }
+
+    // Helper class for TED API error responses
+    private static class TedApiErrorResponse {
+        private final String message;
+
+        public TedApiErrorResponse(String message) {
+            this.message = message;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+    }
+
     public static class SuggestPatchesRequest {
         private String noticeXml;
         private List<SuggestedGppCriterion> criteria;
@@ -215,6 +312,66 @@ public class GppController {
 
         public void setNoticeXml(String noticeXml) {
             this.noticeXml = noticeXml;
+        }
+    }
+
+    public static class ValidateNoticeRequest {
+        private String noticeXml;
+        private String language = "en";
+        private String validationMode = "static";
+
+        public String getNoticeXml() {
+            return noticeXml;
+        }
+
+        public void setNoticeXml(String noticeXml) {
+            this.noticeXml = noticeXml;
+        }
+
+        public String getLanguage() {
+            return language;
+        }
+
+        public void setLanguage(String language) {
+            this.language = language;
+        }
+
+        public String getValidationMode() {
+            return validationMode;
+        }
+
+        public void setValidationMode(String validationMode) {
+            this.validationMode = validationMode;
+        }
+    }
+
+    public static class ValidateNoticeResponse {
+        private String validationReportXml;
+        private String summary;
+        private int validationStatus;
+
+        public String getValidationReportXml() {
+            return validationReportXml;
+        }
+
+        public void setValidationReportXml(String validationReportXml) {
+            this.validationReportXml = validationReportXml;
+        }
+
+        public String getSummary() {
+            return summary;
+        }
+
+        public void setSummary(String summary) {
+            this.summary = summary;
+        }
+
+        public int getValidationStatus() {
+            return validationStatus;
+        }
+
+        public void setValidationStatus(int validationStatus) {
+            this.validationStatus = validationStatus;
         }
     }
 }
