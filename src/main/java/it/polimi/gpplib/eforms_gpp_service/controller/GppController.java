@@ -132,6 +132,50 @@ public class GppController {
                 .body(tedResponse.getBody());
     }
 
+    @PostMapping(value = "/validate-notice", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ValidateNoticeResponse> validateNotice(
+            @RequestBody ValidateNoticeRequest request) {
+
+        log.info("Received validate-notice request");
+
+        // Load notice to get the eForms SDK version
+        Notice notice = analyzer.loadNotice(request.getNoticeXml());
+        String eFormsSdkVersion = notice.getEFormsSdkVersion();
+
+        // Encode XML to Base64
+        String base64Xml = Base64.getEncoder().encodeToString(request.getNoticeXml().getBytes());
+
+        // Prepare request body for TED API
+        String tedRequestBody = String.format(
+                "{\"notice\":\"%s\",\"language\":\"%s\",\"validationMode\":\"%s\",\"eFormsSdkVersion\":\"%s\"}",
+                base64Xml, request.getLanguage(), request.getValidationMode(), eFormsSdkVersion);
+
+        // Set headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_XML));
+        headers.setBearerAuth(appConfig.getApi().getTedApiKey());
+
+        HttpEntity<String> requestEntity = new HttpEntity<>(tedRequestBody, headers);
+
+        // Call TED API
+        RestTemplate restTemplate = new RestTemplate();
+        String tedApiUrl = "https://api.ted.europa.eu/v3/notices/validate";
+        ResponseEntity<String> tedResponse = restTemplate.exchange(
+                tedApiUrl,
+                HttpMethod.POST,
+                requestEntity,
+                String.class);
+
+        // Create response
+        ValidateNoticeResponse response = new ValidateNoticeResponse();
+        response.setValidationReportXml(tedResponse.getBody());
+        response.setSummary("Validation report generated - detailed analysis placeholder");
+
+        return ResponseEntity.status(tedResponse.getStatusCode())
+                .body(response);
+    }
+
     public static class SuggestPatchesRequest {
         private String noticeXml;
         private List<SuggestedGppCriterion> criteria;
@@ -215,6 +259,57 @@ public class GppController {
 
         public void setNoticeXml(String noticeXml) {
             this.noticeXml = noticeXml;
+        }
+    }
+
+    public static class ValidateNoticeRequest {
+        private String noticeXml;
+        private String language = "en";
+        private String validationMode = "static";
+
+        public String getNoticeXml() {
+            return noticeXml;
+        }
+
+        public void setNoticeXml(String noticeXml) {
+            this.noticeXml = noticeXml;
+        }
+
+        public String getLanguage() {
+            return language;
+        }
+
+        public void setLanguage(String language) {
+            this.language = language;
+        }
+
+        public String getValidationMode() {
+            return validationMode;
+        }
+
+        public void setValidationMode(String validationMode) {
+            this.validationMode = validationMode;
+        }
+    }
+
+    public static class ValidateNoticeResponse {
+        private String validationReportXml;
+        private String summary;
+
+        public String getValidationReportXml() {
+            return validationReportXml;
+        }
+
+        public void setValidationReportXml(String validationReportXml) {
+            this.validationReportXml = validationReportXml;
+        }
+
+        public String getSummary() {
+            return summary;
+        }
+
+        public void setSummary(String summary) {
+            this.summary = summary;
         }
     }
 }
