@@ -178,42 +178,54 @@ public class GppController {
 
             return ResponseEntity.ok(response);
 
-        } catch (Exception e) {
-            // Error case - extract error details
-            String errorMessage = e.getMessage();
-            int statusCode = 500; // default
-
-            if (e instanceof org.springframework.web.client.HttpClientErrorException) {
-                org.springframework.web.client.HttpClientErrorException httpError = (org.springframework.web.client.HttpClientErrorException) e;
-                statusCode = httpError.getStatusCode().value();
-
-                // Try to extract the actual error message from the JSON response
-                String responseBody = httpError.getResponseBodyAsString();
-                try {
-                    // Parse JSON to extract the message field
-                    if (responseBody.contains("\"message\":")) {
-                        int messageStart = responseBody.indexOf("\"message\":\"") + 11;
-                        int messageEnd = responseBody.indexOf("\",", messageStart);
-                        if (messageEnd == -1) {
-                            messageEnd = responseBody.indexOf("\"}", messageStart);
-                        }
-                        if (messageStart > 10 && messageEnd > messageStart) {
-                            errorMessage = responseBody.substring(messageStart, messageEnd)
-                                    .replace("\\n", " ")
-                                    .replace("\\\"", "\"");
-                        }
-                    }
-                } catch (Exception parseException) {
-                    log.warn("Could not parse error message from TED API response", parseException);
-                }
-            }
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            // Handle HTTP client errors (4xx status codes)
+            TedApiErrorResponse errorResponse = parseErrorResponse(e.getResponseBodyAsString());
 
             response.setValidationReportXml(null);
-            response.setSummary("Fatal error: " + errorMessage);
-            response.setValidationStatus(statusCode);
+            response.setSummary("Fatal error: " + errorResponse.getMessage());
+            response.setValidationStatus(e.getStatusCode().value());
 
-            // Return 200 OK but with error details in the response body
             return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            // Handle other exceptions (network issues, etc.)
+            response.setValidationReportXml(null);
+            response.setSummary("Fatal error: " + e.getMessage());
+            response.setValidationStatus(500);
+
+            return ResponseEntity.ok(response);
+        }
+    }
+
+    private TedApiErrorResponse parseErrorResponse(String responseBody) {
+        try {
+            // Simple JSON parsing - you could use Jackson ObjectMapper for more robust
+            // parsing
+            if (responseBody.contains("\"message\":")) {
+                int messageStart = responseBody.indexOf("\"message\":\"") + 11;
+                int messageEnd = responseBody.indexOf("\"", messageStart);
+                String message = responseBody.substring(messageStart, messageEnd)
+                        .replace("\\n", " ")
+                        .replace("\\\"", "\"");
+                return new TedApiErrorResponse(message);
+            }
+        } catch (Exception e) {
+            log.warn("Could not parse error response from TED API", e);
+        }
+        return new TedApiErrorResponse("Unknown error occurred");
+    }
+
+    // Helper class for TED API error responses
+    private static class TedApiErrorResponse {
+        private final String message;
+
+        public TedApiErrorResponse(String message) {
+            this.message = message;
+        }
+
+        public String getMessage() {
+            return message;
         }
     }
 
