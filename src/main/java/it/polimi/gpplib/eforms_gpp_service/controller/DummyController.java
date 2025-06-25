@@ -4,9 +4,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 import lombok.extern.slf4j.Slf4j;
-import it.polimi.gpplib.DefaultGppNoticeAnalyzer;
-import it.polimi.gpplib.GppNoticeAnalyzer;
-import it.polimi.gpplib.model.Notice;
 
 @Slf4j
 @RestController
