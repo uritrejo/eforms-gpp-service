@@ -161,19 +161,60 @@ public class GppController {
         // Call TED API
         RestTemplate restTemplate = new RestTemplate();
         String tedApiUrl = "https://api.ted.europa.eu/v3/notices/validate";
-        ResponseEntity<String> tedResponse = restTemplate.exchange(
-                tedApiUrl,
-                HttpMethod.POST,
-                requestEntity,
-                String.class);
 
-        // Create response
         ValidateNoticeResponse response = new ValidateNoticeResponse();
-        response.setValidationReportXml(tedResponse.getBody());
-        response.setSummary("Validation report generated - detailed analysis placeholder");
 
-        return ResponseEntity.status(tedResponse.getStatusCode())
-                .body(response);
+        try {
+            ResponseEntity<String> tedResponse = restTemplate.exchange(
+                    tedApiUrl,
+                    HttpMethod.POST,
+                    requestEntity,
+                    String.class);
+
+            // Success case - TED API returned validation report as XML
+            response.setValidationReportXml(tedResponse.getBody());
+            response.setSummary("Validation completed successfully");
+            response.setValidationStatus(tedResponse.getStatusCode().value());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            // Error case - extract error details
+            String errorMessage = e.getMessage();
+            int statusCode = 500; // default
+
+            if (e instanceof org.springframework.web.client.HttpClientErrorException) {
+                org.springframework.web.client.HttpClientErrorException httpError = (org.springframework.web.client.HttpClientErrorException) e;
+                statusCode = httpError.getStatusCode().value();
+
+                // Try to extract the actual error message from the JSON response
+                String responseBody = httpError.getResponseBodyAsString();
+                try {
+                    // Parse JSON to extract the message field
+                    if (responseBody.contains("\"message\":")) {
+                        int messageStart = responseBody.indexOf("\"message\":\"") + 11;
+                        int messageEnd = responseBody.indexOf("\",", messageStart);
+                        if (messageEnd == -1) {
+                            messageEnd = responseBody.indexOf("\"}", messageStart);
+                        }
+                        if (messageStart > 10 && messageEnd > messageStart) {
+                            errorMessage = responseBody.substring(messageStart, messageEnd)
+                                    .replace("\\n", " ")
+                                    .replace("\\\"", "\"");
+                        }
+                    }
+                } catch (Exception parseException) {
+                    log.warn("Could not parse error message from TED API response", parseException);
+                }
+            }
+
+            response.setValidationReportXml(null);
+            response.setSummary("Fatal error: " + errorMessage);
+            response.setValidationStatus(statusCode);
+
+            // Return 200 OK but with error details in the response body
+            return ResponseEntity.ok(response);
+        }
     }
 
     public static class SuggestPatchesRequest {
@@ -295,6 +336,7 @@ public class GppController {
     public static class ValidateNoticeResponse {
         private String validationReportXml;
         private String summary;
+        private int validationStatus;
 
         public String getValidationReportXml() {
             return validationReportXml;
@@ -310,6 +352,14 @@ public class GppController {
 
         public void setSummary(String summary) {
             this.summary = summary;
+        }
+
+        public int getValidationStatus() {
+            return validationStatus;
+        }
+
+        public void setValidationStatus(int validationStatus) {
+            this.validationStatus = validationStatus;
         }
     }
 }
