@@ -21,6 +21,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import java.util.Base64;
 import java.util.Collections;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Slf4j
 @RestController
@@ -200,25 +202,22 @@ public class GppController {
 
     private TedApiErrorResponse parseErrorResponse(String responseBody) {
         try {
-            // Simple JSON parsing - you could use Jackson ObjectMapper for more robust
-            // parsing
-            if (responseBody.contains("\"message\":")) {
-                int messageStart = responseBody.indexOf("\"message\":\"") + 11;
-                int messageEnd = responseBody.indexOf("\"", messageStart);
-                String message = responseBody.substring(messageStart, messageEnd)
-                        .replace("\\n", " ")
-                        .replace("\\\"", "\"");
-                return new TedApiErrorResponse(message);
-            }
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.readValue(responseBody, TedApiErrorResponse.class);
         } catch (Exception e) {
-            log.warn("Could not parse error response from TED API", e);
+            log.warn("Could not parse error response from TED API: {}", responseBody, e);
+            return new TedApiErrorResponse("Unknown error occurred");
         }
-        return new TedApiErrorResponse("Unknown error occurred");
     }
 
     // Helper class for TED API error responses
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private static class TedApiErrorResponse {
-        private final String message;
+        private String message;
+
+        public TedApiErrorResponse() {
+            // Default constructor for Jackson
+        }
 
         public TedApiErrorResponse(String message) {
             this.message = message;
@@ -226,6 +225,10 @@ public class GppController {
 
         public String getMessage() {
             return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
         }
     }
 
