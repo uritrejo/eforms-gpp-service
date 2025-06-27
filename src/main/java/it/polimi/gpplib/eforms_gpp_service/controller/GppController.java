@@ -37,14 +37,14 @@ public class GppController {
     // temporary storage for manual testing
     private Notice dummyNotice;
 
-    @PostMapping(value = "/analyze-notice", consumes = MediaType.APPLICATION_XML_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/analyze-notice", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GppAnalysisResult> analyzeNotice(
-            @RequestBody String xmlString,
+            @RequestBody AnalyzeNoticeRequest request,
             @RequestParam(name = "manualTesting", required = false, defaultValue = "false") boolean manualTesting) {
 
         log.info("Received analyze request");
 
-        Notice notice = analyzer.loadNotice(xmlString);
+        Notice notice = analyzer.loadNotice(request.getNoticeXml());
         if (manualTesting) {
             log.info("Manual testing mode enabled for /analyze-notice");
             dummyNotice = notice;
@@ -254,6 +254,18 @@ public class GppController {
 
         public void setMessage(String message) {
             this.message = message;
+        }
+    }
+
+    public static class AnalyzeNoticeRequest {
+        private String noticeXml;
+
+        public String getNoticeXml() {
+            return noticeXml;
+        }
+
+        public void setNoticeXml(String noticeXml) {
+            this.noticeXml = noticeXml;
         }
     }
 
