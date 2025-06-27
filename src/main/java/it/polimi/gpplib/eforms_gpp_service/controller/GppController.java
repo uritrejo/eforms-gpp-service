@@ -96,8 +96,8 @@ public class GppController {
         return ResponseEntity.ok(new ApplyPatchesResponse(patchedNoticeXml));
     }
 
-    @PostMapping(value = "/visualize-notice", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<String> visualizeNotice(
+    @PostMapping(value = "/visualize-notice", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<VisualizeNoticeResponse> visualizeNotice(
             @RequestBody VisualizeNoticeRequest request,
             @RequestParam(name = "language", required = false, defaultValue = "en") String language) {
 
@@ -122,16 +122,41 @@ public class GppController {
         // Call TED API
         RestTemplate restTemplate = new RestTemplate();
         String tedApiUrl = "https://api.ted.europa.eu/v3/notices/render";
-        ResponseEntity<String> tedResponse = restTemplate.exchange(
-                tedApiUrl,
-                HttpMethod.POST,
-                requestEntity,
-                String.class);
 
-        // Forward HTML response
-        return ResponseEntity.status(tedResponse.getStatusCode())
-                .contentType(MediaType.TEXT_HTML)
-                .body(tedResponse.getBody());
+        VisualizeNoticeResponse response = new VisualizeNoticeResponse();
+
+        try {
+            ResponseEntity<String> tedResponse = restTemplate.exchange(
+                    tedApiUrl,
+                    HttpMethod.POST,
+                    requestEntity,
+                    String.class);
+
+            // Success case - TED API returned HTML
+            response.setNoticeHtml(tedResponse.getBody());
+            response.setSummary("Visualization completed successfully");
+            response.setVisualizationStatus(tedResponse.getStatusCode().value());
+
+            return ResponseEntity.ok(response);
+
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            // Handle HTTP client errors (4xx status codes)
+            TedApiErrorResponse errorResponse = parseErrorResponse(e.getResponseBodyAsString());
+
+            response.setNoticeHtml(null);
+            response.setSummary("Fatal error: " + errorResponse.getMessage());
+            response.setVisualizationStatus(e.getStatusCode().value());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            // Handle other exceptions (network issues, etc.)
+            response.setNoticeHtml(null);
+            response.setSummary("Fatal error: " + e.getMessage());
+            response.setVisualizationStatus(500);
+
+            return ResponseEntity.ok(response);
+        }
     }
 
     @PostMapping(value = "/validate-notice", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -315,6 +340,36 @@ public class GppController {
 
         public void setNoticeXml(String noticeXml) {
             this.noticeXml = noticeXml;
+        }
+    }
+
+    public static class VisualizeNoticeResponse {
+        private String noticeHtml;
+        private String summary;
+        private int visualizationStatus;
+
+        public String getNoticeHtml() {
+            return noticeHtml;
+        }
+
+        public void setNoticeHtml(String noticeHtml) {
+            this.noticeHtml = noticeHtml;
+        }
+
+        public String getSummary() {
+            return summary;
+        }
+
+        public void setSummary(String summary) {
+            this.summary = summary;
+        }
+
+        public int getVisualizationStatus() {
+            return visualizationStatus;
+        }
+
+        public void setVisualizationStatus(int visualizationStatus) {
+            this.visualizationStatus = visualizationStatus;
         }
     }
 
