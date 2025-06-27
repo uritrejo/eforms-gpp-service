@@ -123,12 +123,12 @@ public class GppController {
         return ResponseEntity.ok(new ApplyPatchesResponse(patchedNoticeXml));
     }
 
-    @Operation(summary = "Visualize a procurement notice", description = "Converts an eForms XML notice to HTML visualization using the TED API")
+    @Operation(summary = "Visualize a procurement notice", description = "Converts an eForms XML notice to HTML visualization using the TED API. "
+            +
+            "Returns 200 with visualization status - TED API errors are included in the response body.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Notice visualization completed", content = @Content(mediaType = "application/json", schema = @Schema(implementation = VisualizeNoticeResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid notice XML"),
-            @ApiResponse(responseCode = "401", description = "Invalid TED API key"),
-            @ApiResponse(responseCode = "500", description = "TED API error or internal server error")
+            @ApiResponse(responseCode = "200", description = "Visualization request completed (check visualizationStatus for TED API errors)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = VisualizeNoticeResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PostMapping(value = "/visualize-notice", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<VisualizeNoticeResponse> visualizeNotice(
@@ -193,12 +193,12 @@ public class GppController {
         }
     }
 
-    @Operation(summary = "Validate a procurement notice", description = "Validates an eForms XML notice using the TED API validation service")
+    @Operation(summary = "Validate a procurement notice", description = "Validates an eForms XML notice using the TED API validation service. "
+            +
+            "Returns 200 with validation status - TED API errors are included in the response body.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Notice validation completed", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ValidateNoticeResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid notice XML or validation parameters"),
-            @ApiResponse(responseCode = "401", description = "Invalid TED API key"),
-            @ApiResponse(responseCode = "500", description = "TED API error or internal server error")
+            @ApiResponse(responseCode = "200", description = "Validation request completed (check validationStatus for TED API errors)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ValidateNoticeResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PostMapping(value = "/validate-notice", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ValidateNoticeResponse> validateNotice(
