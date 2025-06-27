@@ -1,6 +1,9 @@
 # eForms GPP Service
 
-A Spring Boot REST API service for Green Public Procurement (GPP) analysis of eForms notices. This service provides endpoints for analyzing procurement notices, suggesting GPP improvements, applying patches, and integrating with the TED (Tenders Electronic Daily) API for validation and visualization.
+A Spring Boot REST API service for Green Public Procurement (GPP) analysis of eForms notices.
+It acts as an intermediary layer designed to expose the core functionalities of the [GPP Library](https://github.com/uritrejo/eforms-gpp-library) to external applications via a REST API.
+This service provides endpoints for analyzing eForm notices, suggesting GPP criteria, and applying them into the eForm notice.
+It integrates with the [TED API](https://docs.ted.europa.eu/api/latest/index.html) for validation and visualization.
 
 ## 🚀 Quick Start
 
@@ -15,7 +18,7 @@ A Spring Boot REST API service for Green Public Procurement (GPP) analysis of eF
 1. **Clone and build the project:**
 
     ```bash
-    git clone <repository-url>
+    git clone https://github.com/uritrejo/eforms-gpp-service.git
     cd eforms-gpp-service
     mvn clean compile
     ```
@@ -138,28 +141,6 @@ docker run -e APP_API_TED_API_KEY="your-api-key" \
 
 ## 🔧 Development
 
-### Project Structure
-
-```
-src/
-├── main/
-│   ├── java/
-│   │   └── it/polimi/gpplib/eforms_gpp_service/
-│   │       ├── EformsGppServiceApplication.java
-│   │       ├── config/
-│   │       │   ├── AppConfig.java
-│   │       │   ├── OpenApiConfig.java
-│   │       │   └── WebConfig.java
-│   │       └── controller/
-│   │           └── GppController.java
-│   └── resources/
-│       ├── application.properties
-│       ├── application-dev.properties.example
-│       ├── application-prod.properties.example
-│       └── example_notices/
-└── test/
-```
-
 ### Building
 
 ```bash
@@ -208,12 +189,3 @@ mvn package
 -   [Building a RESTful Web Service](https://spring.io/guides/gs/rest-service/)
 -   [Building REST services with Spring](https://spring.io/guides/tutorials/rest/)
 -   [Building a RESTful Web Service with Spring Boot Actuator](https://spring.io/guides/gs/actuator-service/)
-
-## 📝 Notes
-
--   The original package name 'it.polimi.gpplib.eforms-gpp-service' was invalid and this project uses 'it.polimi.gpplib.eforms_gpp_service' instead
--   Due to Maven's design, elements are inherited from the parent POM. The project POM contains empty overrides for unwanted elements like `<license>` and `<developers>`
-
-## 🤝 Contributing
-
-Please ensure all commits follow the project's coding standards and include appropriate tests.
