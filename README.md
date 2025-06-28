@@ -5,6 +5,12 @@ It acts as an intermediary layer designed to expose the core functionalities of 
 This service provides endpoints for analyzing eForm notices, suggesting GPP criteria, and applying them into the eForm notice.
 It integrates with the [TED API](https://docs.ted.europa.eu/api/latest/index.html) for validation and visualization.
 
+For an example on using this service, please refer to the [GPP UI](https://github.com/uritrejo/eforms-gpp-ui).
+
+## High-level architecture diagram
+
+![Architecture Diagram](docs/images/system-arch-diagram.png)
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -189,3 +195,9 @@ mvn package
 -   [Building a RESTful Web Service](https://spring.io/guides/gs/rest-service/)
 -   [Building REST services with Spring](https://spring.io/guides/tutorials/rest/)
 -   [Building a RESTful Web Service with Spring Boot Actuator](https://spring.io/guides/gs/actuator-service/)
+
+## 🎓 Academic Context
+
+This library was developed as part of research at **Politecnico di Milano** focusing on the digitalization and automation of Green Public Procurement processes. It aims to bridge the gap between environmental policy and practical procurement implementation.
+
+_Making public procurement greener, one notice at a time_ 🌱
